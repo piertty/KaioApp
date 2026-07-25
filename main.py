@@ -1,7 +1,7 @@
 import os
 import tempfile
 import base64
-import shutil
+import sys
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +10,7 @@ import librosa
 
 app = FastAPI()
 
-# Allow requests from any frontend (Netlify, local, etc.)
+# Allow all origins (for Netlify frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +25,6 @@ async def health():
 
 @app.post("/separate")
 async def separate_audio(file: UploadFile = File(...)):
-    # Check file type
     if not file.content_type.startswith("audio/"):
         raise HTTPException(400, "File must be an audio file")
 
@@ -40,15 +39,14 @@ async def separate_audio(file: UploadFile = File(...)):
         output_dir = os.path.join(tmpdir, "output")
         os.makedirs(output_dir, exist_ok=True)
 
-        # Run Demucs (model htdemucs_ft)
+        # Set sys.argv for demucs.separate.main()
+        sys.argv = ['demucs', '--model', 'htdemucs_ft', '--out', output_dir, input_path]
         try:
-            demucs.separate.main(
-                ["--model", "htdemucs_ft", "--out", output_dir, input_path]
-            )
+            demucs.separate.main()
         except Exception as e:
             raise HTTPException(500, f"Demucs error: {str(e)}")
 
-        # Locate output files
+        # Locate separated files
         base_name = os.path.splitext(os.path.basename(input_path))[0]
         sep_dir = os.path.join(output_dir, "htdemucs_ft", base_name)
 
@@ -58,7 +56,6 @@ async def separate_audio(file: UploadFile = File(...)):
         if not os.path.exists(vocals_path) or not os.path.exists(instrumental_path):
             raise HTTPException(500, "Separation output missing")
 
-        # Encode to base64 for transport
         def encode_wav(path):
             with open(path, "rb") as f:
                 return base64.b64encode(f.read()).decode("utf-8")
