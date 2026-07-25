@@ -10,7 +10,6 @@ import librosa
 
 app = FastAPI()
 
-# Allow all origins (for Netlify frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,7 +28,6 @@ async def separate_audio(file: UploadFile = File(...)):
         raise HTTPException(400, "File must be an audio file")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Save uploaded file
         ext = file.filename.split(".")[-1]
         input_path = os.path.join(tmpdir, f"input.{ext}")
         with open(input_path, "wb") as f:
@@ -46,7 +44,6 @@ async def separate_audio(file: UploadFile = File(...)):
         except Exception as e:
             raise HTTPException(500, f"Demucs error: {str(e)}")
 
-        # Locate separated files
         base_name = os.path.splitext(os.path.basename(input_path))[0]
         sep_dir = os.path.join(output_dir, "htdemucs_ft", base_name)
 
