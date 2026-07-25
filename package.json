@@ -1,0 +1,15 @@
+{
+  "name": "kaio",
+  "version": "1.0.0",
+  "description": "Kaio Karaoke Studio",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.6.9",
+    "dotenv": "^16.0.3"
+  }
+}
