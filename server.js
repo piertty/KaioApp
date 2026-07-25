@@ -13,27 +13,20 @@ if (!HF_API_TOKEN) {
   process.exit(1);
 }
 
-// Serve frontend files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Vocal separation endpoint
 app.post('/api/separate', upload.single('audio'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No audio file uploaded' });
-  }
-
+  if (!req.file) return res.status(400).json({ error: 'No audio file uploaded' });
   const audioBuffer = req.file.buffer;
-  if (audioBuffer.length === 0) {
-    return res.status(400).json({ error: 'Empty audio file' });
-  }
+  if (!audioBuffer.length) return res.status(400).json({ error: 'Empty file' });
 
   try {
     const apiUrl = 'https://api-inference.huggingface.co/models/facebook/htdemucs';
 
-    // Retry logic for 503 (model cold start)
+    // Retry up to 3 times on 503 (model loading)
     const callWithRetry = async (retries = 3, delay = 8000) => {
       for (let i = 0; i < retries; i++) {
-        const response = await fetch(apiUrl, {
+        const resp = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${HF_API_TOKEN}`,
@@ -41,52 +34,39 @@ app.post('/api/separate', upload.single('audio'), async (req, res) => {
           },
           body: audioBuffer,
         });
-
-        if (response.status === 503) {
-          console.log(`Model loading, retry ${i + 1}/${retries} after ${delay / 1000}s...`);
+        if (resp.status === 503) {
+          console.log(`Model loading, retry ${i + 1}/${retries}...`);
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
-
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Hugging Face API error ${response.status}: ${text}`);
-        }
-
-        return response.json();
+        if (!resp.ok) throw new Error(`Hugging Face error ${resp.status}: ${await resp.text()}`);
+        return resp.json();
       }
-      throw new Error('Model still loading after multiple retries. Please try again in a minute.');
+      throw new Error('Model still loading after retries. Please try again in a minute.');
     };
 
     const result = await callWithRetry(3, 8000);
 
-    // Extract stems (handles both direct object and array responses)
     let vocals, other;
     if (result.vocals && result.other) {
-      // Direct object
       vocals = result.vocals.data || result.vocals;
       other = result.other.data || result.other;
     } else if (Array.isArray(result) && result[0]) {
-      // Array (some API versions)
       const stems = result[0];
       vocals = stems.vocals?.data || stems.vocals;
       other = stems.other?.data || stems.other;
     } else {
-      return res.status(500).json({ error: 'Unexpected response format from API' });
+      return res.status(500).json({ error: 'Unexpected API response' });
     }
 
-    if (!vocals || !other) {
-      return res.status(500).json({ error: 'Could not extract stems from response' });
-    }
+    if (!vocals || !other) return res.status(500).json({ error: 'Could not extract stems' });
 
     res.json({ vocals, other });
-  } catch (error) {
-    console.error('Separation error:', error.message);
-    res.status(502).json({ error: error.message });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Kaio server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Kaio running on port ${PORT}`));
