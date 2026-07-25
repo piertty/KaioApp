@@ -1,1 +1,452 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Kaio Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --pink: #ff66aa;
+      --pistachio: #a3d977;
+      --blue-gum: #77ccdd;
+      --dark: #1a1520;
+      --card: #241e2a;
+      --text: #f2efe9;
+      --muted: #a08ca0;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      background-image: radial-gradient(circle at 20% 20%, rgba(255,102,170,0.08), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(163,217,119,0.08), transparent 50%);
+    }
+    .app { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 18px; }
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px; font-weight: 700;
+      background: linear-gradient(135deg, var(--pink), var(--pistachio));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center; margin-bottom: 10px;
+    }
+    .card {
+      background: var(--card); border: 1px solid rgba(255,255,255,0.05);
+      border-radius: var(--radius); padding: 18px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .card h3 {
+      font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; color: var(--pink);
+    }
+    .card h3 span {
+      width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 8px; background: var(--pink); font-size: 13px; color: #fff;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border-radius: 12px; padding: 12px 16px; font-weight: 600; font-size: 14px;
+      cursor: pointer; border: none; transition: 0.2s; width: 100%;
+      color: #fff; background: var(--pink);
+    }
+    .btn.pistachio { background: var(--pistachio); color: #1a2a14; }
+    .btn.blue-gum { background: var(--blue-gum); color: #102a2c; }
+    .btn.outline { background: transparent; border: 1px solid var(--pink); color: var(--pink); }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+    .lyrics-box {
+      background: #1e1924; border-radius: 14px; padding: 12px; max-height: 200px; overflow-y: auto;
+      font-size: 14px; line-height: 1.6; color: var(--pistachio); white-space: pre-wrap;
+      border: 1px solid rgba(163,217,119,0.2);
+    }
+    .record-bar { display: flex; align-items: center; gap: 12px; }
+    .rec-circle {
+      width: 60px; height: 60px; border-radius: 50%; background: var(--pink);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 24px; color: #fff;
+      box-shadow: 0 4px 20px rgba(255,102,170,0.4); transition: 0.2s;
+    }
+    .rec-circle.recording { background: #e2585a; animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,102,170,0.7); } 70% { box-shadow: 0 0 0 15px rgba(255,102,170,0); } 100% { box-shadow: 0 0 0 0 rgba(255,102,170,0); } }
+    .slider-group { display: flex; align-items: center; gap: 10px; }
+    .slider-group label { width: 80px; font-size: 12px; color: var(--muted); }
+    input[type=range] { flex: 1; height: 4px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 4px; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
+    .waveform {
+      height: 40px; background: rgba(255,255,255,0.03); border-radius: 8px;
+      display: flex; align-items: center; gap: 2px; padding: 4px; overflow: hidden;
+    }
+    .waveform i { flex: 1; background: var(--pink); opacity: 0.5; border-radius: 2px; min-height: 4px; }
+    .hidden { display: none !important; }
+    .progress-fill { height: 4px; background: var(--pistachio); width: 0%; transition: width 0.3s; }
+    .flex-row { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="logo">🎤 Kaio Studio</div>
+
+  <div class="card">
+    <h3><span>1</span> Upload Song</h3>
+    <input type="file" id="songFile" accept="audio/*" class="hidden" />
+    <button class="btn" id="uploadBtn">📁 Choose MP3 / WAV</button>
+    <div id="songInfo" class="hidden" style="font-size:12px; color:var(--muted);"></div>
+  </div>
+
+  <div class="card">
+    <h3><span>2</span> Remove Vocals</h3>
+    <button class="btn pistachio" id="removeBtn" disabled>☁️ Extract Instrumental</button>
+    <div id="removeProgress" class="hidden" style="margin-top:8px;">
+      <div style="background:rgba(255,255,255,0.1); border-radius:4px; height:4px;">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;" id="progressText">Uploading…</div>
+    </div>
+    <div id="instrReady" class="hidden" style="font-size:12px; color:var(--pistachio);">✅ Instrumental ready</div>
+    <div class="waveform" id="waveformInstr"></div>
+    <button class="btn outline" id="previewInstrBtn" disabled>▶ Preview Instrumental</button>
+  </div>
+
+  <div class="card">
+    <h3><span>3</span> Lyrics <span style="font-size:11px; color:var(--pink); margin-left:auto;">Auto</span></h3>
+    <div class="lyrics-box" id="lyricsDisplay">Lyrics will appear automatically after uploading a song.</div>
+  </div>
+
+  <div class="card">
+    <h3><span>4</span> Record Your Voice</h3>
+    <div class="record-bar">
+      <div class="rec-circle" id="recordBtn">🎤</div>
+      <div style="font-size:13px; color:var(--muted);" id="recordStatus">Tap to record</div>
+    </div>
+    <div class="waveform" id="waveformVocal" style="display:none;"></div>
+    <button class="btn outline" id="previewVocalBtn" style="display:none;">▶ Preview Take</button>
+  </div>
+
+  <div class="card">
+    <h3><span>5</span> Effects</h3>
+    <div class="slider-group">
+      <label>Pitch</label>
+      <input type="range" id="pitchSlider" min="-12" max="12" value="0" step="1" />
+      <span style="width:30px; font-size:12px; color:var(--muted);" id="pitchValue">0 st</span>
+    </div>
+    <div class="slider-group">
+      <label>Reverb</label>
+      <input type="range" id="reverbSlider" min="0" max="100" value="20" />
+      <span style="width:30px; font-size:12px; color:var(--muted);" id="reverbValue">20%</span>
+    </div>
+    <button class="btn blue-gum" id="applyEffectsBtn" disabled>✨ Apply Effects</button>
+  </div>
+
+  <div class="card">
+    <h3><span>6</span> Mix & Download</h3>
+    <button class="btn" id="mixBtn" disabled>🎚️ Mix & Download WAV</button>
+    <div id="mixReady" class="hidden" style="font-size:12px; color:var(--pistachio);">✅ Mix ready – downloading…</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const songFile = document.getElementById('songFile');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const songInfo = document.getElementById('songInfo');
+  const removeBtn = document.getElementById('removeBtn');
+  const removeProgress = document.getElementById('removeProgress');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const instrReady = document.getElementById('instrReady');
+  const waveformInstr = document.getElementById('waveformInstr');
+  const previewInstrBtn = document.getElementById('previewInstrBtn');
+  const lyricsDisplay = document.getElementById('lyricsDisplay');
+  const recordBtn = document.getElementById('recordBtn');
+  const recordStatus = document.getElementById('recordStatus');
+  const waveformVocal = document.getElementById('waveformVocal');
+  const previewVocalBtn = document.getElementById('previewVocalBtn');
+  const pitchSlider = document.getElementById('pitchSlider');
+  const pitchValue = document.getElementById('pitchValue');
+  const reverbSlider = document.getElementById('reverbSlider');
+  const reverbValue = document.getElementById('reverbValue');
+  const applyEffectsBtn = document.getElementById('applyEffectsBtn');
+  const mixBtn = document.getElementById('mixBtn');
+  const mixReady = document.getElementById('mixReady');
+
+  let audioCtx = null;
+  let originalBuffer = null;
+  let instrumentalBuffer = null;
+  let vocalBuffer = null;
+  let processedVocal = null;
+  let previewSource = null;
+  let mediaRecorder = null;
+  let recording = false;
+  let micStream = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--pink);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:999;';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2000);
+  }
+
+  uploadBtn.addEventListener('click', () => songFile.click());
+  songFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    songInfo.classList.remove('hidden');
+    songInfo.textContent = `Loaded: ${file.name}`;
+    const buf = await file.arrayBuffer();
+    try {
+      originalBuffer = await getAudioCtx().decodeAudioData(buf);
+      removeBtn.disabled = false;
+      drawWaveform(waveformInstr, originalBuffer);
+      previewInstrBtn.disabled = false;
+      instrumentalBuffer = null; vocalBuffer = processedVocal = null;
+      instrReady.classList.add('hidden');
+      removeProgress.classList.add('hidden');
+      applyEffectsBtn.disabled = true; mixBtn.disabled = true; mixReady.classList.add('hidden');
+      autoFetchLyrics(file.name);
+    } catch (err) { showToast('Invalid audio file'); }
+  });
+
+  function autoFetchLyrics(filename) {
+    const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+    const parts = nameWithoutExt.split(' - ');
+    if (parts.length >= 2) {
+      const artist = parts[0].trim(), title = parts[1].trim();
+      lyricsDisplay.textContent = 'Fetching lyrics...';
+      fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`)
+        .then(r => r.json()).then(d => { lyricsDisplay.textContent = d.lyrics || 'Lyrics not found.'; })
+        .catch(() => { lyricsDisplay.textContent = 'Lyrics not available.'; });
+    } else {
+      lyricsDisplay.textContent = 'Could not detect Artist – Title from filename. You can type/paste lyrics below.';
+    }
+  }
+
+  function drawWaveform(container, buffer, color = 'var(--pink)') {
+    container.innerHTML = '';
+    if (!buffer) return;
+    const data = buffer.getChannelData(0);
+    const bars = 50;
+    const step = Math.floor(data.length / bars);
+    for (let i = 0; i < bars; i++) {
+      let sum = 0;
+      for (let j = 0; j < step; j++) sum += Math.abs(data[i*step+j] || 0);
+      const h = Math.max(2, (sum/step)*60);
+      const bar = document.createElement('i');
+      bar.style.cssText = `height:${h}px; background:${color}; border-radius:2px; flex:1; opacity:0.8;`;
+      container.appendChild(bar);
+    }
+  }
+
+  previewInstrBtn.addEventListener('click', () => {
+    const buf = instrumentalBuffer || originalBuffer;
+    if (!buf) return;
+    if (previewSource) { try{previewSource.stop();}catch(e){} previewSource=null; previewInstrBtn.textContent='▶ Preview Instrumental'; return; }
+    const node = getAudioCtx().createBufferSource();
+    node.buffer = buf;
+    node.connect(getAudioCtx().destination);
+    node.onended = () => { previewSource=null; previewInstrBtn.textContent='▶ Preview Instrumental'; };
+    node.start(0);
+    previewSource = node;
+    previewInstrBtn.textContent = '⏹ Stop';
+  });
+
+  // Vocal removal via our server
+  removeBtn.addEventListener('click', async () => {
+    if (!originalBuffer) return;
+    removeBtn.disabled = true;
+    removeProgress.classList.remove('hidden');
+    instrReady.classList.add('hidden');
+    progressFill.style.width = '0%';
+    progressText.textContent = 'Uploading...';
+
+    const wavBlob = bufferToWav(originalBuffer);
+    const formData = new FormData();
+    formData.append('audio', wavBlob, 'input.wav');
+
+    try {
+      const resp = await fetch('/api/separate', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(()=>({error:'Unknown error'}));
+        throw new Error(err.error || 'Server error');
+      }
+      const result = await resp.json();
+      if (!result.other) throw new Error('No instrumental received');
+      instrumentalBuffer = await base64ToAudioBuffer(result.other);
+      drawWaveform(waveformInstr, instrumentalBuffer, 'var(--pistachio)');
+      instrReady.classList.remove('hidden');
+      removeProgress.classList.add('hidden');
+      previewInstrBtn.disabled = false;
+      applyEffectsBtn.disabled = false;
+      mixBtn.disabled = false;
+      showToast('Instrumental ready!');
+    } catch (err) {
+      progressText.textContent = 'Error: ' + err.message;
+      removeBtn.disabled = false;
+    }
+  });
+
+  async function base64ToAudioBuffer(b64) {
+    const byteString = atob(b64);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+    return await getAudioCtx().decodeAudioData(bytes.buffer);
+  }
+
+  function bufferToWav(buffer) {
+    const numChan = buffer.numberOfChannels, rate = buffer.sampleRate;
+    const length = buffer.length * numChan * 2 + 44;
+    const buf = new ArrayBuffer(length), view = new DataView(buf);
+    let off = 0;
+    function w(s){ for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); off+=s.length; }
+    function u32(v){ view.setUint32(off,v,true); off+=4; }
+    function u16(v){ view.setUint16(off,v,true); off+=2; }
+    w('RIFF'); u32(length-8); w('WAVE'); w('fmt '); u32(16); u16(1); u16(numChan); u32(rate); u32(rate*numChan*2); u16(numChan*2); u16(16);
+    w('data'); u32(length-off-4);
+    for (let i=0;i<buffer.length;i++) {
+      for (let c=0;c<numChan;c++) {
+        let s = buffer.getChannelData(c)[i];
+        s = Math.max(-1, Math.min(1, s));
+        view.setInt16(off, s<0 ? s*0x8000 : s*0x7FFF, true); off+=2;
+      }
+    }
+    return new Blob([buf], {type:'audio/wav'});
+  }
+
+  // Recording
+  recordBtn.addEventListener('click', async () => {
+    if (!instrumentalBuffer && !originalBuffer) { showToast('Load a song first'); return; }
+    if (recording) { stopRecording(); } else { await startRecording(); }
+  });
+
+  async function startRecording() {
+    try { micStream = await navigator.mediaDevices.getUserMedia({audio:true}); } catch(e) { showToast('Microphone denied'); return; }
+    recording = true;
+    recordBtn.classList.add('recording');
+    recordStatus.textContent = 'Recording... Sing!';
+    const buf = instrumentalBuffer || originalBuffer;
+    const node = getAudioCtx().createBufferSource();
+    node.buffer = buf;
+    node.connect(getAudioCtx().destination);
+    node.start(0);
+    window._playbackNode = node;
+    mediaRecorder = new MediaRecorder(micStream);
+    const chunks = [];
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(chunks, {type:'audio/webm'});
+      const arr = await blob.arrayBuffer();
+      try {
+        vocalBuffer = await getAudioCtx().decodeAudioData(arr);
+        processedVocal = vocalBuffer;
+        drawWaveform(waveformVocal, vocalBuffer, 'var(--blue-gum)');
+        waveformVocal.style.display = 'flex';
+        previewVocalBtn.style.display = 'inline-block';
+        applyEffectsBtn.disabled = false;
+        mixBtn.disabled = false;
+        showToast('Recording saved');
+      } catch(e) { showToast('Recording failed'); }
+      micStream.getTracks().forEach(t=>t.stop());
+      recordStatus.textContent = 'Tap to record';
+    };
+    mediaRecorder.start();
+  }
+
+  function stopRecording() {
+    recording = false;
+    recordBtn.classList.remove('recording');
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    if (window._playbackNode) { try { window._playbackNode.stop(); } catch(e){} }
+  }
+
+  previewVocalBtn.addEventListener('click', () => {
+    if (!vocalBuffer) return;
+    const node = getAudioCtx().createBufferSource(); node.buffer = vocalBuffer;
+    node.connect(getAudioCtx().destination); node.start(0);
+  });
+
+  // Effects
+  pitchSlider.addEventListener('input', () => { pitchValue.textContent = (pitchSlider.value>0?'+':'') + pitchSlider.value + ' st'; });
+  reverbSlider.addEventListener('input', () => { reverbValue.textContent = reverbSlider.value + '%'; });
+
+  applyEffectsBtn.addEventListener('click', async () => {
+    if (!vocalBuffer) return;
+    const semitones = parseInt(pitchSlider.value,10);
+    const reverbPct = parseInt(reverbSlider.value,10)/100;
+    let vocal = vocalBuffer;
+    if (semitones !== 0) vocal = await applyPitchShift(vocal, semitones);
+    if (reverbPct > 0) vocal = await applyReverb(vocal, reverbPct);
+    processedVocal = vocal;
+    drawWaveform(waveformVocal, processedVocal, 'var(--blue-gum)');
+    showToast('Effects applied');
+  });
+
+  async function applyPitchShift(buffer, semitones) {
+    const ratio = Math.pow(2, semitones/12);
+    const offline = new OfflineAudioContext(1, buffer.length, buffer.sampleRate);
+    const src = offline.createBufferSource(); src.buffer = buffer; src.playbackRate.value = ratio;
+    src.connect(offline.destination); src.start(0);
+    return await offline.startRendering();
+  }
+
+  async function applyReverb(buffer, wetAmount) {
+    const offline = new OfflineAudioContext(1, buffer.length, buffer.sampleRate);
+    const src = offline.createBufferSource(); src.buffer = buffer;
+    const dry = offline.createGain(); dry.gain.value = 1-wetAmount;
+    const wet = offline.createGain(); wet.gain.value = wetAmount;
+    const convolver = offline.createConvolver();
+    convolver.buffer = createImpulse(offline, 2, 2);
+    src.connect(dry); src.connect(convolver); convolver.connect(wet);
+    dry.connect(offline.destination); wet.connect(offline.destination);
+    src.start(0);
+    return await offline.startRendering();
+  }
+
+  function createImpulse(ctx, duration, decay) {
+    const rate = ctx.sampleRate, len = rate*duration;
+    const buf = ctx.createBuffer(2, len, rate);
+    for (let ch=0; ch<2; ch++) {
+      const data = buf.getChannelData(ch);
+      for (let i=0; i<len; i++) data[i] = (Math.random()*2-1)*Math.pow(1 - i/len, decay);
+    }
+    return buf;
+  }
+
+  // Mix & Download
+  mixBtn.addEventListener('click', async () => {
+    const instr = instrumentalBuffer || originalBuffer;
+    const vocal = processedVocal || vocalBuffer;
+    if (!instr || !vocal) { showToast('Need instrumental and recording'); return; }
+    const mixLength = Math.max(instr.length, vocal.length);
+    const sampleRate = Math.max(instr.sampleRate, vocal.sampleRate);
+    const offline = new OfflineAudioContext(2, mixLength, sampleRate);
+    const src1 = offline.createBufferSource(); src1.buffer = instr;
+    const src2 = offline.createBufferSource(); src2.buffer = vocal;
+    src1.connect(offline.destination); src2.connect(offline.destination);
+    src1.start(0); src2.start(0);
+    const rendered = await offline.startRendering();
+    const blob = bufferToWav(rendered);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'kaio-mix.wav'; a.click();
+    mixReady.classList.remove('hidden');
+    showToast('Mix downloaded!');
+  });
+})();
+</script>
+</body>
+</html>
