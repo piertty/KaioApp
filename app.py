@@ -6,6 +6,7 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import demucs.separate
+import demucs.pretrained
 
 app = Flask(__name__)
 CORS(app)
@@ -28,7 +29,6 @@ def separate():
     if not file.filename:
         return jsonify({"error": "Empty filename"}), 400
 
-    # Extract artist and title from the filename (e.g., "Adele - Hello.mp3")
     filename = os.path.splitext(file.filename)[0]
     parts = filename.split(' - ')
     artist = parts[0].strip() if len(parts) >= 2 else None
@@ -74,13 +74,14 @@ def separate():
 def health():
     return {"status": "ok", "model": "htdemucs"}
 
-# Optional: check if model is cached (for debugging)
 @app.route('/model-status')
 def model_status():
-    import torch
-    cache_dir = torch.hub._get_torch_home()
-    model_path = os.path.join(cache_dir, 'checkpoints', 'htdemucs.pth')
-    return {"cached": os.path.exists(model_path)}
+    try:
+        # This will force a load if not cached, or return quickly if cached.
+        model = demucs.pretrained.get_model('htdemucs')
+        return {"cached": True}
+    except Exception as e:
+        return {"cached": False, "error": str(e)}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
