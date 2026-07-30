@@ -1,4 +1,8 @@
-import os, tempfile, base64, urllib.parse, requests
+import os
+import tempfile
+import base64
+import urllib.parse
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import demucs.separate
@@ -12,7 +16,8 @@ def fetch_lyrics(artist, title):
         resp = requests.get(url, timeout=5)
         if resp.status_code == 200:
             return resp.json().get('lyrics')
-    except: pass
+    except:
+        pass
     return None
 
 @app.route('/separate', methods=['POST'])
@@ -23,6 +28,7 @@ def separate():
     if not file.filename:
         return jsonify({"error": "Empty filename"}), 400
 
+    # Extract artist and title from the filename (e.g., "Adele - Hello.mp3")
     filename = os.path.splitext(file.filename)[0]
     parts = filename.split(' - ')
     artist = parts[0].strip() if len(parts) >= 2 else None
@@ -33,16 +39,29 @@ def separate():
         ext = file.filename.split(".")[-1]
         input_path = os.path.join(tmpdir, f"input.{ext}")
         file.save(input_path)
+
         output_dir = os.path.join(tmpdir, "output")
         os.makedirs(output_dir, exist_ok=True)
-        demucs.separate.main(["--model", "htdemucs", "--out", output_dir, input_path])
+
+        try:
+            demucs.separate.main(
+                ["--model", "htdemucs", "--out", output_dir, input_path]
+            )
+        except Exception as e:
+            return jsonify({"error": f"Demucs failed: {str(e)}"}), 500
+
         base_name = os.path.splitext(os.path.basename(input_path))[0]
         sep_dir = os.path.join(output_dir, "htdemucs", base_name)
         vocals_path = os.path.join(sep_dir, "vocals.wav")
         inst_path = os.path.join(sep_dir, "no_vocals.wav")
+
+        if not os.path.exists(vocals_path) or not os.path.exists(inst_path):
+            return jsonify({"error": "Separation output missing"}), 500
+
         def encode_wav(path):
             with open(path, "rb") as f:
                 return base64.b64encode(f.read()).decode("utf-8")
+
         return jsonify({
             "data": [{
                 "instrumental": encode_wav(inst_path),
@@ -54,6 +73,14 @@ def separate():
 @app.route('/health')
 def health():
     return {"status": "ok", "model": "htdemucs"}
+
+# Optional: check if model is cached (for debugging)
+@app.route('/model-status')
+def model_status():
+    import torch
+    cache_dir = torch.hub._get_torch_home()
+    model_path = os.path.join(cache_dir, 'checkpoints', 'htdemucs.pth')
+    return {"cached": os.path.exists(model_path)}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
