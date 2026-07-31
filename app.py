@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import base64
 import urllib.parse
@@ -42,11 +43,10 @@ def separate():
         output_dir = os.path.join(tmpdir, "output")
         os.makedirs(output_dir, exist_ok=True)
 
-        # Demucs will download the model automatically on the first run
+        # 👇 SET sys.argv for demucs.separate.main()
+        sys.argv = ['demucs', '--model', 'htdemucs', '--out', output_dir, input_path]
         try:
-            demucs.separate.main(
-                ["--model", "htdemucs", "--out", output_dir, input_path]
-            )
+            demucs.separate.main()
         except Exception as e:
             return jsonify({"error": f"Demucs failed: {str(e)}"}), 500
 
