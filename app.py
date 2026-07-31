@@ -6,7 +6,6 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import demucs.separate
-import demucs.pretrained
 
 app = Flask(__name__)
 CORS(app)
@@ -43,6 +42,7 @@ def separate():
         output_dir = os.path.join(tmpdir, "output")
         os.makedirs(output_dir, exist_ok=True)
 
+        # Demucs will download the model automatically on the first run
         try:
             demucs.separate.main(
                 ["--model", "htdemucs", "--out", output_dir, input_path]
@@ -73,15 +73,6 @@ def separate():
 @app.route('/health')
 def health():
     return {"status": "ok", "model": "htdemucs"}
-
-@app.route('/model-status')
-def model_status():
-    try:
-        # This will force a load if not cached, or return quickly if cached.
-        model = demucs.pretrained.get_model('htdemucs')
-        return {"cached": True}
-    except Exception as e:
-        return {"cached": False, "error": str(e)}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
